@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+docs/_build/
+.venv/
+src/heataxis/_version.py
+
+# Local figure / analysis outputs (SVG, PNG, CSV companions)
+results/

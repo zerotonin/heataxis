@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "heataxis: thermal indices and physiological threshold detection for cattle"
+version: "0.0.0"
+date-released: "2026-06-25"
+license: MIT
+repository-code: "https://github.com/zerotonin/heataxis"
+authors:
+  - family-names: "Geurten"
+    given-names: "Bart R. H."
+    orcid: "https://orcid.org/0000-0002-1816-3241"
+keywords:
+  - "dairy cattle"
+  - "heat stress"
+  - "thermal index"
+  - "threshold detection"

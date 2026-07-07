@@ -1,0 +1,34 @@
+# Pre-commit hooks for heataxis.
+#
+# ruff (lint) runs on every commit; pytest runs before every push.  These use
+# the project's installed tools (language: system), so they match CI exactly.
+# ruff-format is intentionally omitted so the aligned palette/unit tables and
+# the box-drawing banners stay as written.
+#
+# Enable once per clone:
+#   pre-commit install                       # ruff on commit
+#   pre-commit install --hook-type pre-push  # pytest on push
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        entry: ruff check --fix
+        language: system
+        types: [python]
+        require_serial: true
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

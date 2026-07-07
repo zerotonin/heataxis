@@ -1,0 +1,11 @@
+name: heataxis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - matplotlib
+  - pip
+  - pip:
+      - -e .[dev,docs]

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "heataxis"
+dynamic = ["version"]
+description = "Thermal heat-load indices and physiological threshold detection for dairy-cattle heat-stress analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Bart R. H. Geurten", email = "bart.geurten@otago.ac.nz" }]
+keywords = ["dairy cattle", "heat stress", "thermal index", "threshold detection",
+            "precision livestock farming", "temperature humidity index"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = ["numpy>=1.23"]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.6"]
+stats = ["scipy>=1.9"]
+dev = ["pytest>=7", "pytest-cov", "ruff>=0.4", "pre-commit", "matplotlib>=3.6", "scipy>=1.9"]
+docs = ["sphinx>=7", "furo", "myst-parser", "matplotlib>=3.6", "scipy>=1.9"]
+
+[project.scripts]
+heataxis = "heataxis.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/zerotonin/heataxis"
+Repository = "https://github.com/zerotonin/heataxis"
+Documentation = "https://zerotonin.github.io/heataxis/"
+Issues = "https://github.com/zerotonin/heataxis/issues"
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/heataxis/__init__.py" = ["F401"]
+"tests/test_viz.py" = ["E402", "I001"]
+"scripts/*" = ["E402", "I001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
