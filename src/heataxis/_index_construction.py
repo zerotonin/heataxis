@@ -26,6 +26,7 @@ from pathlib import Path
 import numpy as np
 
 from heataxis import indices as idx
+from heataxis.constants import STRESS_ONSET as THRESHOLD
 from heataxis.constants import WONG
 from heataxis.viz import save_figure, setup_figure
 
@@ -61,13 +62,9 @@ COLOUR = {
 BAND_COLOUR = WONG["grey"]
 LEGEND_ORDER = ["THI", "BGHI", "THI_adj", "ETI", "HLI", "CCI", "ETIC"]
 
-# Published heat-stress onset thresholds (index units) for the alternative
-# fan normalisation only. Values vary by breed/genotype in the sources.
-# TODO verify each against its primary source before using in the paper.
-THRESHOLD = {
-    "THI": 72.0, "THI_adj": 72.0, "ETI": 27.0, "BGHI": 79.0,
-    "HLI": 86.0, "CCI": 25.0, "ETIC": 20.0, "ITSC": 300.0,
-}
+# Heat-stress onset thresholds for the alternative fan normalisation; the
+# values live in constants.STRESS_ONSET so the scripts and the library cannot
+# drift apart on what counts as stress.
 
 
 # ─────────────────────────────────────────────────────────────

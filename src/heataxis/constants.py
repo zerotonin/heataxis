@@ -54,4 +54,23 @@ UNITS: dict[str, str] = {
     "Tbg": "degC", "u": "m/s", "SR": "W/m2",
 }
 
+# ┌────────────────────────────────────────────────────────────┐
+# │ Stress onset  « one number, one place, one citation »      │
+# └────────────────────────────────────────────────────────────┘
+# Published heat-stress onset thresholds, in each index's own units.  Every
+# consumer imports from here: a threshold that is re-declared per script
+# drifts, and two analyses then disagree about what "stress" means while
+# appearing to measure the same thing.
+#
+# Values are breed- and management-dependent in the primary sources.
+# TODO verify each against its primary source before using in the paper.
+STRESS_ONSET: dict[str, float] = {
+    "THI": 72.0, "THI_adj": 72.0, "ETI": 27.0, "BGHI": 79.0,
+    "HLI": 86.0, "CCI": 25.0, "ETIC": 20.0, "ITSC": 300.0,
+}
+
+# THI mild-stress onset — the baseline for load, duration, and leaky-integral
+# transforms throughout the exposure-history analyses.
+THI_STRESS_ONSET: float = STRESS_ONSET["THI"]
+
 ArrayLike: TypeAlias = "float | np.ndarray"
