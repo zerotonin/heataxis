@@ -25,7 +25,7 @@ import numpy as np
 from heataxis.constants import ArrayLike
 
 __all__ = [
-    "heat_load_above", "leaky_integrate", "cumulative_load",
+    "heat_load_above", "leaky_integrate", "low_pass", "cumulative_load",
     "accumulated_heat_load", "thermal_stress_duration", "thermal_stress_load",
 ]
 
@@ -43,33 +43,107 @@ def heat_load_above(index: ArrayLike, baseline: float) -> np.ndarray:
     return np.clip(np.asarray(index, dtype=float) - baseline, 0.0, None)
 
 
-def leaky_integrate(index: ArrayLike, dt_h: float, tau_h: float, *,
-                    baseline: float = 0.0) -> np.ndarray:
-    """Leaky integral of the load above ``baseline`` (low-pass with recovery).
+def leaky_integrate(index: ArrayLike, dt_h: float | np.ndarray, tau_h: float, *,
+                    baseline: float = 0.0, rectify: bool = True) -> np.ndarray:
+    """Leaky integral of the load relative to ``baseline`` (low-pass with recovery).
 
-    Solves ``dL/dt = -L/tau + x(t)`` with ``x = max(index - baseline, 0)`` using
-    the exact update for a piecewise-constant input, so it is stable at any step.
-    Unlike a pure cum-sum it **forgets**: a cool spell discharges the accumulated
-    load.  Under a sustained load it **saturates** at ``L_ss = tau * x`` (a bounded
-    state), and reaches ~95 % of that in ~3*tau.  This is the Rung-1 model of the
-    exposure-history ladder.
+    Solves ``dL/dt = -L/tau + x(t)`` using the exact update for a piecewise-constant
+    input, so it is stable at any step. The driver is ``x = index - baseline``,
+    **rectified to its positive part when ``rectify`` is True** (load only above the
+    baseline) or **signed when ``rectify`` is False** (the state also *discharges*
+    below the baseline — the physically correct choice when ``index`` is a body-heat
+    equilibrium that the animal sheds heat towards, not a threshold-gated load). The
+    rectified form saturates at ``L_ss = tau * x`` and, because it clamps at zero,
+    is heavily zero-inflated whenever ``index`` sits below ``baseline``.
+
+    ``dt_h`` may be a scalar (regular sampling) or a per-sample array giving the
+    gap from the previous sample to each one — the latter is the correct choice
+    for **irregular / gappy** real sensor series: a large gap makes ``exp(-dt/tau)``
+    vanish, so the integrator forgets the past and restarts, exactly as it should.
 
     Args:
-        index: Thermal-index time series.
-        dt_h: Time step (hours).
+        index: Thermal-index (or equilibrium) time series.
+        dt_h: Time step (hours); scalar or one value per sample.
         tau_h: Memory / recovery time constant (hours).
-        baseline: Load-onset baseline (index units).
+        baseline: Reference the load is measured from.
+        rectify: Clamp the driver at zero (threshold load) if True; keep it signed
+            (continuous heat balance) if False.
 
     Returns:
-        The leaky-integrated load (index-hours), same length as ``index``.
+        The leaky-integrated load, same length as ``index``.
+
+    Raises:
+        ValueError: If ``dt_h`` is an array whose length differs from ``index``.
     """
-    x = heat_load_above(index, baseline)
-    decay = float(np.exp(-dt_h / tau_h))
-    gain = tau_h * (1.0 - decay)          # exact step response over dt_h
+    if rectify:
+        x = heat_load_above(index, baseline)
+    else:
+        x = np.asarray(index, dtype=float) - baseline
+    dt = np.asarray(dt_h, dtype=float)
+    if dt.ndim == 0:
+        decay = np.full(x.size, float(np.exp(-dt / tau_h)))
+    elif dt.size == x.size:
+        decay = np.exp(-dt / tau_h)
+    else:
+        raise ValueError("dt_h array must match the length of index")
     out = np.empty_like(x)
     acc = 0.0
     for i in range(x.size):
-        acc = acc * decay + x[i] * gain
+        d = decay[i]
+        acc = acc * d + x[i] * tau_h * (1.0 - d)   # exact step response over dt
+        out[i] = acc
+    return out
+
+
+def low_pass(index: ArrayLike, dt_h: float | np.ndarray, tau_h: float, *,
+             initial: float | None = None) -> np.ndarray:
+    """First-order low-pass (Newton cooling) of an index series.
+
+    Solves ``dL/dt = (x - L)/tau`` with the exact update for a piecewise-constant
+    input.  Unlike :func:`leaky_integrate` this **tracks** rather than
+    accumulates: the steady state is the driver itself (``L_ss = x``) instead of
+    ``tau * x``, so the output keeps the units of ``index`` and stays comparable
+    across ``tau``.  That is what makes it the right transform for asking *how
+    much memory* a predictor needs — varying ``tau`` changes the smoothing only,
+    not the scale, so the resulting fits are commensurable.
+
+    It is the exponential moving average in continuous time; the discrete update
+    is ``L_i = L_{i-1} * exp(-dt/tau) + x_i * (1 - exp(-dt/tau))``.
+
+    ``dt_h`` may be a scalar (regular sampling) or one value per sample; a gap
+    much larger than ``tau`` sends the decay to zero, so the state restarts from
+    the current sample.
+
+    Args:
+        index: Thermal-index (or any driver) time series.
+        dt_h: Time step (hours); scalar or one value per sample.
+        tau_h: Memory time constant (hours).
+        initial: Starting state.  Defaults to ``index[0]``, which begins the
+            series already in equilibrium and so avoids a warm-up transient
+            that would otherwise contaminate the first few ``tau``.
+
+    Returns:
+        The low-passed series, same length and units as ``index``.
+
+    Raises:
+        ValueError: If ``index`` is empty, or ``dt_h`` is an array whose length
+            differs from ``index``.
+    """
+    x = np.asarray(index, dtype=float)
+    if x.size == 0:
+        raise ValueError("index must be non-empty")
+    dt = np.asarray(dt_h, dtype=float)
+    if dt.ndim == 0:
+        decay = np.full(x.size, float(np.exp(-dt / tau_h)))
+    elif dt.size == x.size:
+        decay = np.exp(-dt / tau_h)
+    else:
+        raise ValueError("dt_h array must match the length of index")
+    out = np.empty_like(x)
+    acc = float(x[0]) if initial is None else float(initial)
+    for i in range(x.size):
+        d = decay[i]
+        acc = acc * d + x[i] * (1.0 - d)
         out[i] = acc
     return out
 
